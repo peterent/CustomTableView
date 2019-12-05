@@ -9,14 +9,17 @@
 import SwiftUI
 
 
-
 class MyData: TableViewDataSource, ObservableObject {
     @Published var mutableData = [String]()
+    
     func count() -> Int {
         return mutableData.count
     }
-    func itemForRow(row: Int) -> String {
+    func titleForRow(row: Int) -> String {
         return mutableData[row]
+    }
+    func subtitleForRow(row: Int) -> String? {
+        return "Something - Something"
     }
     init(_ someData: [String]) {
         mutableData.append(contentsOf: someData)
@@ -29,7 +32,7 @@ class MyData: TableViewDataSource, ObservableObject {
     }
 }
 
-struct ContentView: View {
+struct ContentView: View, TableViewDelegate {
     
     @ObservedObject var mutableData = MyData(["Apples", "Oranges", "Grapes", "Bananas"])
     @State var inputField: String = ""
@@ -38,7 +41,7 @@ struct ContentView: View {
     @State var detailViewActive = false
     @State var detailViewRow = 0
     @State var isLoading = false
-    
+        
     let total = 100
     
     func supplyMoreData() {
@@ -49,19 +52,6 @@ struct ContentView: View {
         }
         mutableData.append(contentsOf: temp)
         isLoading = false
-    }
-    
-    func handleScroll(isScrolling: Bool) {
-        withAnimation {
-            self.isScrolling = isScrolling
-        }
-    }
-    
-    func loadIfNeeded(index: Int) {
-        if index+5 > self.mutableData.count() && self.mutableData.count() < self.total && !self.isLoading {
-            print("*** NEED TO SUPPLY MORE DATA ***")
-            self.supplyMoreData()
-        }
     }
         
     var body: some View {
@@ -85,11 +75,7 @@ struct ContentView: View {
                     
                     Divider()
                     
-                    TableView(dataSource: self.mutableData as TableViewDataSource, onScroll: self.handleScroll(isScrolling:), onAppear: self.loadIfNeeded(index:)) { (index) in
-                        print("Tapped on record \(index)")
-                        self.detailViewRow = index
-                        self.detailViewActive.toggle()
-                    }
+                    TableView(dataSource: self.mutableData as TableViewDataSource, delegate: self )
                 }
                 .padding()
                 .edgesIgnoringSafeArea(.bottom)
@@ -110,6 +96,33 @@ struct ContentView: View {
                 }
             }.navigationBarTitle("UITableView")
         }
+    }
+    
+    //MARK: - TableViewDelegate Functions
+    
+    func onScroll(_ tableView: TableView, isScrolling: Bool) {
+        withAnimation {
+            self.isScrolling = isScrolling
+        }
+    }
+    
+    func onAppear(_ tableView: TableView, at index: Int) {
+        if index+5 > self.mutableData.count() && self.mutableData.count() < self.total && !self.isLoading {
+            print("*** NEED TO SUPPLY MORE DATA ***")
+            self.supplyMoreData()
+        }
+    }
+    
+    func onTapped(_ tableView: TableView, at index: Int) {
+        print("Tapped on record \(index)")
+        self.detailViewRow = index
+        self.detailViewActive.toggle()
+    }
+    
+    // this could be a view modifier but I do not think there is a way to read the view modifier
+    // from a UIViewRepresentable (yet).
+    func heightForRow(_ tableView: TableView, at index: Int) -> CGFloat {
+        return 64.0
     }
 }
 

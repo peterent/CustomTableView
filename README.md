@@ -27,20 +27,23 @@ Having the need to monitor scrolling along with this performance problem, I deci
 `UITableView`. I'm pretty sure the SwiftUI `List` is such a wrapper, but I don't need to be so generic. 
 
 This GIT repro is what I came up with as a prototype. The `TableView` is the wrapped `UITableView` and it uses a `TableViewDataSource`
-to supply the data to present. You can pass it some functions to tell you when the table is scrolling, when it is on a specific
-row, and when a row is tapped.
+to supply the data to present. You also pass it something that conforms to the `TableViewDelegate` protocol which will provide feedback
+during scrolling, when a row is tapped, and so forth. 
+
+> Using the delegate pattern is not very SwiftUI-like, but as I am still somewhat of a novice with SwiftUI, this was the most
+> straightforward approach I could think of to accomplish my goals. I welcome anyone who can suggest changes to make
+> this component feel more at home in the SwiftUI realm.
+
+The cells in the table are subclasses of `UITableViewCell` and use a `XIB` for layout. You can do that in code of course, but
+I wanted to show how you can blend the old with the new in case you need to do that.
 
 You can use the `TableView` like this:
 
 ```
 TableView(
     dataSource: self.mutableData as TableViewDataSource, 
-    onScroll: self.handleScroll(isScrolling:), 
-    onAppear: self.loadIfNeeded(index:)) { (index) in
-          print("Tapped on record \(index)")
-          self.detailViewRow = index
-          self.detailViewActive.toggle()
-}
+    delegate: self
+)
 ```
 This `TableView` is contained (look at the `ContentView.swift` file) within a `VStack` that's ultimately contained within a 
 `NavigationView`. What you want to do when a row is tapped is activate a `NavigationLink`. I found a handy way to do this

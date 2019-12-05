@@ -10,24 +10,31 @@ import SwiftUI
 
 protocol TableViewDataSource {
     func count() -> Int
-    func itemForRow(row: Int) -> String
+    func titleForRow(row: Int) -> String
+    func subtitleForRow(row: Int) -> String?
+}
+
+protocol TableViewDelegate {
+    func heightForRow(_ tableView: TableView, at index: Int) -> CGFloat
+    func onScroll(_ tableView: TableView, isScrolling: Bool) -> Void
+    func onAppear(_ tableView: TableView, at index: Int) -> Void
+    func onTapped(_ tableView: TableView, at index: Int) -> Void
 }
 
 struct TableView: UIViewRepresentable {
         
     var dataSource: TableViewDataSource
-    var onScroll: ((Bool) -> Void)?
-    var onAppear: ((Int) -> Void)?
-    var onTapped: (Int) -> Void
+    var delegate: TableViewDelegate?
     
     let tableView = UITableView()
     
     func makeCoordinator() -> TableView.Coordinator {
-        Coordinator(self, onScroll: self.onScroll, onAppear: onAppear, onTapped: onTapped)
+        Coordinator(self, delegate: self.delegate)
     }
     
     func makeUIView(context: Context) -> UITableView {
         tableView.tableFooterView = UIView(frame: CGRect(x: 0, y: 0, width: 1, height: 60))
+        tableView.register(UINib(nibName: "TableViewCell", bundle: nil), forCellReuseIdentifier: "CellIdentifier")
         return tableView
     }
     
@@ -48,17 +55,13 @@ struct TableView: UIViewRepresentable {
         var parent: TableView
 
         var mydata: TableViewDataSource?
-        var onScroll: ((Bool) -> Void)?
-        var onAppear: ((Int) -> Void)?
-        var onTapped: (Int) -> Void
+        var delegate: TableViewDelegate?
         
         var previousCount = 0
         
-        init(_ parent: TableView, onScroll: ((Bool)->Void)?, onAppear: ((Int)->Void)?, onTapped: @escaping (Int)->Void) {
+        init(_ parent: TableView, delegate: TableViewDelegate?) {
+            self.delegate = delegate
             self.parent = parent
-            self.onScroll = onScroll
-            self.onAppear = onAppear
-            self.onTapped = onTapped
         }
         
         // This function determines if the table should refresh. It keeps track of the count of items and
@@ -82,26 +85,32 @@ struct TableView: UIViewRepresentable {
         }
         
         func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-            let cell = UITableViewCell(style: .default, reuseIdentifier: "CellIdentifier")
+            let cell = tableView.dequeueReusableCell(withIdentifier: "CellIdentifier", for: indexPath) as! TableViewCell
+
             if let dataSource = mydata {
-                cell.textLabel?.text = dataSource.itemForRow(row: indexPath.row)
+                cell.heading.text = dataSource.titleForRow(row: indexPath.row)
+                cell.subheading.text = dataSource.subtitleForRow(row: indexPath.row)
                 cell.accessoryType = .disclosureIndicator
-                onAppear?(indexPath.row)
+                delegate?.onAppear(parent, at: indexPath.row)
             }
             return cell
         }
         
         func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
             tableView.deselectRow(at: indexPath, animated: true)
-            onTapped(indexPath.row)
+            delegate?.onTapped(parent, at: indexPath.row)
+        }
+        
+        func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+            return self.delegate?.heightForRow(parent, at: indexPath.row) ?? 56.0
         }
                 
         func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-            self.onScroll?(true)
+            self.delegate?.onScroll(parent, isScrolling: true)
         }
         
         func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
-            self.onScroll?(false)
+            self.delegate?.onScroll(parent, isScrolling: false)
         }
     }
 }
